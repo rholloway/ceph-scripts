@@ -46,7 +46,7 @@ fi
 
 # get logs for last hour
 rm -f /tmp/ceph.log.lasthour
-awk -vTIME=`date -d'now-1 hours' +%H:%M:%S` ' { if ($2 > TIME) print $0}' /var/log/ceph/ceph.log >> /tmp/ceph.log.lasthour
+awk -vTIME=`date -d'now-1 hours' +%H:%M:%S` -vDATE=`date -d'now-1 hours' +%Y-%m-%d` ' { if ($2 > TIME && $1 == DATE) print $0}' /var/log/ceph/ceph.log >> /tmp/ceph.log.lasthour
 
 # check for WRN or DBG log messages in the past hour
 WARNINGS=$(grep -v INF /tmp/ceph.log.lasthour)
