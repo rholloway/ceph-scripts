@@ -21,7 +21,7 @@ import socket
 from datetime import datetime
 import math
 
-CARBON_SERVER = 'filer-carbon.cern.ch'
+CARBON_SERVER = '10.0.37.12'
 CARBON_PORT = 2003
 
 
