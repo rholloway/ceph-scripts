@@ -42,6 +42,8 @@ skip_pgs = [
 parser = argparse.ArgumentParser(description='Run Deep Scrubs As Necessary.')
 parser.add_argument('--max-scrubs', dest='MAX_SCRUBS', type=int, default=2,
                     help='Maximum number of deep scrubs to run simultaneously (default: %(default)s)')
+parser.add_argument('--max-scrubs-weekend', dest='MAX_SCRUBS_WEEKEND', type=int, default=None,
+                    help='Maximum number of deep scrubs to run simultaneously on the weekend (default: same as max scrubs)')
 parser.add_argument('--sleep', dest='SLEEP', type=int, default=0,
                     help='Sleep this many seconds then run again, looping forever. 0 disables looping. (default: %(default)s)')
 parser.add_argument("--age", dest="AGE", type=int, default=14,
@@ -72,10 +74,32 @@ def send_metric(key, value):
     sock.sendall(graphite)
     sock.close()
 
+def in_scrubbing_window(min_hour, max_hour):
+    """ Returns True if we are within the scrubbing window, False otherwise.
+
+        Args:
+            min_hour: earliest time we can scrub
+            max_hour: max time we can scrub
+    """
+    now = datetime.datetime.utcnow()
+
+    if max_hour > min_hour:
+        # assume same day scrub
+        return now.hour >= min_hour and now.hour <= max_hour
+    elif max_hour < min_hour:
+        # assume overnight scrub
+        return now.hour <= max_hour or now.hour >= min_hour
+    else:
+        # single hour scrub
+        return now.hour == min_hour
+
 
 def main():
     args = parser.parse_args()
-    MAX_SCRUBS = args.MAX_SCRUBS
+    MAX_SCRUBS_WEEK = args.MAX_SCRUBS
+    MAX_SCRUBS_WEEKEND = args.MAX_SCRUBS_WEEKEND
+    if MAX_SCRUBS_WEEKEND is None:
+        MAX_SCRUBS_WEEKEND = MAX_SCRUBS_WEEK
     SLEEP = args.SLEEP
     CONF = args.CONF
     AGE = args.AGE
@@ -99,14 +123,19 @@ def main():
     deep_scrubbing = {}
     while True:
 
-        now = datetime.datetime.utcnow()
-        if now.hour < MIN_HOUR or now.hour > MAX_HOUR:
+        if not in_scrubbing_window(MIN_HOUR, MAX_HOUR):
             logger.warning("Outside of deep scrubbing hours, will not start")
             if SLEEP:
                 time.sleep(120)
                 continue
             else:
                 sys.exit(0)
+
+        now = datetime.datetime.utcnow()
+        if now.isoweekday() >= 6:
+            MAX_SCRUBS = MAX_SCRUBS_WEEKEND
+        else:
+            MAX_SCRUBS = MAX_SCRUBS_WEEK
 
         # pull PG data
         logger.info("Pulling pg info")
@@ -153,7 +182,7 @@ def main():
         pgs_scrubbing = [pg for pg in pg_stats if 'scrubbing+deep' in pg['state']]
 
         if len(pgs_scrubbing) >= MAX_SCRUBS:
-            logger.info("Pending another deep scrub task to finish")
+            logger.info("Currently limited to %s active deep scrubs - pending another deep scrub task to finish", MAX_SCRUBS)
             if SLEEP:
                 time.sleep(30)
                 continue
