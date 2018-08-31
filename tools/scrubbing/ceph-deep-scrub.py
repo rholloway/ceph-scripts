@@ -48,9 +48,9 @@ parser.add_argument('--sleep', dest='SLEEP', type=int, default=0,
                     help='Sleep this many seconds then run again, looping forever. 0 disables looping. (default: %(default)s)')
 parser.add_argument("--age", dest="AGE", type=int, default=14,
                     help="How often to run a deep scrub in days (default: every %(default)s days)")
-parser.add_argument("--start-hour", dest="START_HOUR", default=0,
+parser.add_argument("--start-hour", type=int, dest="START_HOUR", default=0,
                     help="Earliest hour of day (UTC) to allow deep scubbing (default: %(default)s)")
-parser.add_argument("--end-hour", dest="END_HOUR", default=24,
+parser.add_argument("--end-hour", type=int, dest="END_HOUR", default=24,
                     help="Latest hour of day (UTC) to allow deep scrubbing (default: %(default)s)")
 parser.add_argument('--conf', dest='CONF', type=str, default="/etc/ceph/ceph.conf",
                     help='Ceph config file. (default: %(default)s)')
@@ -73,6 +73,7 @@ def send_metric(key, value):
     sock.connect((CARBON_SERVER, CARBON_PORT))
     sock.sendall(graphite)
     sock.close()
+
 
 def in_scrubbing_window(min_hour, max_hour):
     """ Returns True if we are within the scrubbing window, False otherwise.
