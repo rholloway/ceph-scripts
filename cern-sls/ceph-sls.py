@@ -58,6 +58,7 @@ def write_xml(slsid='Ceph'):
   osd_stats_sum = cephinfo.get_osd_stats_sum()
   pg_stats_sum = cephinfo.get_pg_stats_sum()['stat_sum']
   pg_map = cephinfo.stat_data['pgmap']
+  latency = None
   try:
     latency = cephinfo.get_write_latency()
     logger.info("Latency: %s", latency)
@@ -68,6 +69,7 @@ def write_xml(slsid='Ceph'):
   except IndexError:
     latency = ['',[0,0,0]]
     read_latency = [0,0,0]
+    logger.warning("IndexError when calling write_latency: %s", latency)
   pg_states = cephinfo.get_pg_states()
   osd_df = cephinfo.osd_df_data['nodes']
   activity = cephinfo.get_smooth_activity(10)
