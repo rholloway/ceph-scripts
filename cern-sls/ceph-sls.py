@@ -65,7 +65,8 @@ def write_xml(slsid='Ceph'):
     read_latency = cephinfo.get_read_latency()
 
     logger.info("Cleaning up %s", latency[0])
-    cephinfo.rados_cleanup(latency[0])
+    cleanup_output = cephinfo.rados_cleanup(latency[0])
+    logger.info("benchmark %s cleaned up: %s", latency[0], cleanup_output)
   except IndexError:
     latency = ['',[0,0,0]]
     read_latency = [0,0,0]
@@ -171,7 +172,7 @@ def write_xml(slsid='Ceph'):
     </data>
 </serviceupdate>
 """
-  print template.format(**context)
+  # print template.format(**context)
 
   # generate Graphite update
   graphite = """

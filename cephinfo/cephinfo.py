@@ -158,7 +158,8 @@ def get_read_latency():
 
 def rados_cleanup(prefix):
   assert(prefix)
-  commands.getoutput('rados -p test cleanup --prefix %s' % prefix)
+  output = commands.getoutput('rados -p test cleanup --prefix %s' % prefix)
+  return output
 
 def get_n_openstack_volumes():
   n = commands.getoutput('rbd ls -p volumes 2>/dev/null | wc -l')
