@@ -191,7 +191,7 @@ def rados_cleanup(prefix):
     assert prefix
     cmd = ['rados', '-p', 'test', 'cleanup', 'benchmark_data', '--prefix', prefix]
     logger.info("Running cmd: '%s'", " ".join(cmd))
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     stdout, stderr = p.communicate()
     rc = p.returncode
     logger.info("Cleanup stdout: '%s' stderr: '%s' rc:%s", stdout, stderr, rc)
