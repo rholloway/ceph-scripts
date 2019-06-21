@@ -8,9 +8,9 @@
 #
 
 try:
-  import simplejson as json
+    import simplejson as json
 except ImportError:
-  import json
+    import json
 
 import logging
 import argparse
@@ -36,88 +36,91 @@ logger.addHandler(stream_handler)
 
 
 def get_status(pg_stats_sum, latency_ms):
-  health = commands.getoutput('timeout 10 ceph health')
+    health = commands.getoutput('timeout 10 ceph health')
 
-  if health.startswith('HEALTH_ERR'):
-    return ('unavailable', health)
+    if health.startswith('HEALTH_ERR'):
+        return 'unavailable', health
 
-  if health == 'HEALTH_OK':
-    return ('available', health)
+    if health == 'HEALTH_OK':
+        return 'available', health
 
-  if pg_stats_sum['num_objects'] > 1 and pg_stats_sum['num_objects_degraded'] / pg_stats_sum['num_objects'] > 0.01:
-    return ('degraded', health)
+    if pg_stats_sum['num_objects'] > 1 and pg_stats_sum['num_objects_degraded'] / pg_stats_sum['num_objects'] > 0.01:
+        return 'degraded', health
 
-  if latency_ms > 100:
-    return ('degraded', health)
+    if latency_ms > 100:
+        return 'degraded', health
 
-  return ('available', health)
+    return 'available', health
 
 
 def write_xml(slsid='Ceph'):
-  osd_states = cephinfo.get_osd_states()
-  osd_stats_sum = cephinfo.get_osd_stats_sum()
-  pg_stats_sum = cephinfo.get_pg_stats_sum()['stat_sum']
-  pg_map = cephinfo.stat_data['pgmap']
-  latency = None
-  try:
-    latency = cephinfo.get_write_latency()
-    logger.info("Latency: %s", latency)
-    read_latency = cephinfo.get_read_latency()
+    osd_states = cephinfo.get_osd_states()
+    osd_stats_sum = cephinfo.get_osd_stats_sum()
+    pg_stats_sum = cephinfo.get_pg_stats_sum()['stat_sum']
+    pg_map = cephinfo.stat_data['pgmap']
+    latency = None
+    try:
+        latency = cephinfo.get_write_latency()
+        logger.info("Latency: %s", latency)
+        read_latency = cephinfo.get_read_latency()
 
-    logger.info("Cleaning up %s", latency[0])
-    cleanup_output = cephinfo.rados_cleanup(latency[0])
-    logger.info("benchmark %s cleaned up: %s", latency[0], cleanup_output)
-  except IndexError:
-    latency = ['',[0,0,0]]
-    read_latency = [0,0,0]
-    logger.warning("IndexError when calling write_latency: %s", latency)
-  pg_states = cephinfo.get_pg_states()
-  osd_df = cephinfo.osd_df_data['nodes']
-  activity = cephinfo.get_smooth_activity(10)
-  status, availabilityinfo = get_status(pg_stats_sum, latency[1][0]*1000)
-  context = {
-    "slsid"              : slsid,
-    "timestamp"          : datetime.strftime(datetime.now(), '%Y-%m-%dT%H:%M:%S'),
-    "status"             : status,
-    "availabilityinfo"   : availabilityinfo,
-    "n_mons"             : cephinfo.get_n_mons(),
-    "n_quorum"           : cephinfo.get_n_mons_quorum(),
-    "n_pools"            : cephinfo.get_n_pools(),
-    "n_osds"             : cephinfo.get_n_osds(),
-    "n_osds_up"          : osd_states['up'],
-    "n_osds_in"          : osd_states['in'],
-    "n_pgs"              : cephinfo.get_n_pgs(),
-    "n_osd_gb_total"     : osd_stats_sum['kb'] / 1024 / 1024,
-    "n_osd_gb_used"      : osd_stats_sum['kb_used'] / 1024 / 1024,
-    "n_osd_gb_avail"     : osd_stats_sum['kb_avail'] / 1024 / 1024,
-    "n_pg_gbytes"        : pg_stats_sum['num_bytes'] / 1024 / 1024 / 1024,
-    "n_objects"          : pg_stats_sum['num_objects'],
-    "n_object_copies"    : pg_stats_sum['num_object_copies'],
-    "n_objects_degraded" : pg_stats_sum['num_objects_degraded'],
-    "n_objects_unfound"  : pg_stats_sum['num_objects_unfound'],
-    "n_objects_misplaced": pg_stats_sum['num_objects_misplaced'],
-    "n_read_gb"          : pg_stats_sum['num_read_kb'] / 1024 / 1024,
-    "n_write_gb"         : pg_stats_sum['num_write_kb'] / 1024 / 1024,
-    "latency_ms"         : latency[1][0]*1000,
-    "latency_max_ms"     : latency[1][1]*1000,
-    "latency_min_ms"     : latency[1][2]*1000,
-    "read_latency_ms"    : read_latency[0]*1000,
-    "read_latency_max_ms": read_latency[1]*1000,
-    "read_latency_min_ms": read_latency[2]*1000,
-    "n_openstack_volumes": cephinfo.get_n_openstack_volumes(),
-    "n_openstack_images" : cephinfo.get_n_openstack_images(),
-    "op_per_sec"         : activity[0],
-    "read_mb_sec"        : activity[1],
-    "write_mb_sec"       : activity[2],
-    "graphite_prefix"    : slsid.replace('_','.').lower() + '.sls',
-    "graphite_osd_prefix": slsid.replace('_','.').lower() + '.osds',
-    "graphite_timestamp" : int(time.time()),
-  }
+        logger.info("Cleaning up %s", latency[0])
+        # russ: clean up all benchmark data associated with this node, sometimes rados cleanup fails if specifying
+        # specific prefix from above, and then number of objects continues to grow. For my use case, this will never
+        # wipe objects I don't want to wipe
+        cleanup_output = cephinfo.rados_cleanup(latency[0].split(".")[0])
+        logger.info("benchmark %s cleaned up: %s", latency[0], cleanup_output)
+    except IndexError:
+        latency = ['', [0, 0, 0]]
+        read_latency = [0, 0, 0]
+        logger.warning("IndexError when calling write_latency: %s", latency)
+    pg_states = cephinfo.get_pg_states()
+    osd_df = cephinfo.osd_df_data['nodes']
+    activity = cephinfo.get_smooth_activity(10)
+    status, availabilityinfo = get_status(pg_stats_sum, latency[1][0] * 1000)
+    context = {
+        "slsid": slsid,
+        "timestamp": datetime.strftime(datetime.now(), '%Y-%m-%dT%H:%M:%S'),
+        "status": status,
+        "availabilityinfo": availabilityinfo,
+        "n_mons": cephinfo.get_n_mons(),
+        "n_quorum": cephinfo.get_n_mons_quorum(),
+        "n_pools": cephinfo.get_n_pools(),
+        "n_osds": cephinfo.get_n_osds(),
+        "n_osds_up": osd_states['up'],
+        "n_osds_in": osd_states['in'],
+        "n_pgs": cephinfo.get_n_pgs(),
+        "n_osd_gb_total": osd_stats_sum['kb'] / 1024 / 1024,
+        "n_osd_gb_used": osd_stats_sum['kb_used'] / 1024 / 1024,
+        "n_osd_gb_avail": osd_stats_sum['kb_avail'] / 1024 / 1024,
+        "n_pg_gbytes": pg_stats_sum['num_bytes'] / 1024 / 1024 / 1024,
+        "n_objects": pg_stats_sum['num_objects'],
+        "n_object_copies": pg_stats_sum['num_object_copies'],
+        "n_objects_degraded": pg_stats_sum['num_objects_degraded'],
+        "n_objects_unfound": pg_stats_sum['num_objects_unfound'],
+        "n_objects_misplaced": pg_stats_sum['num_objects_misplaced'],
+        "n_read_gb": pg_stats_sum['num_read_kb'] / 1024 / 1024,
+        "n_write_gb": pg_stats_sum['num_write_kb'] / 1024 / 1024,
+        "latency_ms": latency[1][0] * 1000,
+        "latency_max_ms": latency[1][1] * 1000,
+        "latency_min_ms": latency[1][2] * 1000,
+        "read_latency_ms": read_latency[0] * 1000,
+        "read_latency_max_ms": read_latency[1] * 1000,
+        "read_latency_min_ms": read_latency[2] * 1000,
+        "n_openstack_volumes": cephinfo.get_n_openstack_volumes(),
+        "n_openstack_images": cephinfo.get_n_openstack_images(),
+        "op_per_sec": activity[0],
+        "read_mb_sec": activity[1],
+        "write_mb_sec": activity[2],
+        "graphite_prefix": slsid.replace('_', '.').lower() + '.sls',
+        "graphite_osd_prefix": slsid.replace('_', '.').lower() + '.osds',
+        "graphite_timestamp": int(time.time()),
+    }
 
-  for state in pg_states.keys():
-    context['n_pgs_%s' % state] = pg_states[state]
+    for state in pg_states.keys():
+        context['n_pgs_%s' % state] = pg_states[state]
 
-  template = """
+    template = """
 <?xml version="1.0" encoding="utf-8"?>
 
 <serviceupdate xmlns="http://sls.cern.ch/SLS/XML/update">
@@ -144,10 +147,11 @@ def write_xml(slsid='Ceph'):
         <numericvalue name="n_pgs" desc="Num PGs">{n_pgs}</numericvalue>
 """
 
-  for state in pg_states.keys():
-    template = template + '        <numericvalue name="n_pgs_%s" desc="Num PGs %s">{n_pgs_%s}</numericvalue>\n' % (state, state, state)
+    for state in pg_states.keys():
+        template = template + '        <numericvalue name="n_pgs_%s" desc="Num PGs %s">{n_pgs_%s}</numericvalue>\n' % (
+            state, state, state)
 
-  template = template + """        <numericvalue name="n_osd_gb_total" desc="OSD Gigabytes Total">{n_osd_gb_total}</numericvalue>
+    template = template + """        <numericvalue name="n_osd_gb_total" desc="OSD Gigabytes Total">{n_osd_gb_total}</numericvalue>
         <numericvalue name="n_osd_gb_used" desc="OSD Gigabytes Used">{n_osd_gb_used}</numericvalue>
         <numericvalue name="n_osd_gb_avail" desc="OSD Gigabytes Avail">{n_osd_gb_avail}</numericvalue>
         <numericvalue name="n_pg_gbytes" desc="PG Gigabytes">{n_pg_gbytes}</numericvalue>
@@ -172,10 +176,10 @@ def write_xml(slsid='Ceph'):
     </data>
 </serviceupdate>
 """
-  # print template.format(**context)
+    # print template.format(**context)
 
-  # generate Graphite update
-  graphite = """
+    # generate Graphite update
+    graphite = """
 {graphite_prefix}.n_mons {n_mons} {graphite_timestamp}
 {graphite_prefix}.n_quorum {n_quorum} {graphite_timestamp}
 {graphite_prefix}.n_pools {n_pools} {graphite_timestamp}
@@ -185,10 +189,10 @@ def write_xml(slsid='Ceph'):
 {graphite_prefix}.n_pgs {n_pgs} {graphite_timestamp}
 """
 
-  for state in pg_states.keys():
-    graphite = graphite + "{graphite_prefix}.n_pgs_%s {n_pgs_%s} {graphite_timestamp}\n" % (state, state)
+    for state in pg_states.keys():
+        graphite = graphite + "{graphite_prefix}.n_pgs_%s {n_pgs_%s} {graphite_timestamp}\n" % (state, state)
 
-  graphite = graphite + """{graphite_prefix}.n_osd_gb_total {n_osd_gb_total} {graphite_timestamp}
+    graphite = graphite + """{graphite_prefix}.n_osd_gb_total {n_osd_gb_total} {graphite_timestamp}
 {graphite_prefix}.n_osd_gb_used {n_osd_gb_used} {graphite_timestamp}
 {graphite_prefix}.n_osd_gb_avail {n_osd_gb_avail} {graphite_timestamp}
 {graphite_prefix}.n_pg_gbytes {n_pg_gbytes} {graphite_timestamp}
@@ -212,20 +216,25 @@ def write_xml(slsid='Ceph'):
 {graphite_prefix}.op_per_sec {op_per_sec} {graphite_timestamp}
 """
 
-  for osd in osd_df:
-    graphite = graphite + "{graphite_osd_prefix}.%s.crush_weight %s {graphite_timestamp}\n" % (osd['id'], osd['crush_weight'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.reweight %s {graphite_timestamp}\n" % (osd['id'], osd['reweight'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.kb %s {graphite_timestamp}\n" % (osd['id'], osd['kb'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.kb_used %s {graphite_timestamp}\n" % (osd['id'], osd['kb_used'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.kb_avail %s {graphite_timestamp}\n" % (osd['id'], osd['kb_avail'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.utilization %s {graphite_timestamp}\n" % (osd['id'], osd['utilization'])
-    graphite = graphite + "{graphite_osd_prefix}.%s.var %s {graphite_timestamp}\n" % (osd['id'], osd['var'])
+    for osd in osd_df:
+        graphite = graphite + "{graphite_osd_prefix}.%s.crush_weight %s {graphite_timestamp}\n" % (
+            osd['id'], osd['crush_weight'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.reweight %s {graphite_timestamp}\n" % (
+            osd['id'], osd['reweight'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.kb %s {graphite_timestamp}\n" % (osd['id'], osd['kb'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.kb_used %s {graphite_timestamp}\n" % (osd['id'], osd['kb_used'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.kb_avail %s {graphite_timestamp}\n" % (
+            osd['id'], osd['kb_avail'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.utilization %s {graphite_timestamp}\n" % (
+            osd['id'], osd['utilization'])
+        graphite = graphite + "{graphite_osd_prefix}.%s.var %s {graphite_timestamp}\n" % (osd['id'], osd['var'])
 
-  update = graphite.format(**context)
-  sock = socket.socket()
-  sock.connect((CARBON_SERVER, CARBON_PORT))
-  sock.sendall(update)
-  sock.close()
+    update = graphite.format(**context)
+    sock = socket.socket()
+    sock.connect((CARBON_SERVER, CARBON_PORT))
+    sock.sendall(update)
+    sock.close()
+
 
 # main
 
