@@ -12,6 +12,7 @@ import subprocess
 import json
 import string
 import sys
+import random
 import time
 import logging
 
@@ -190,7 +191,9 @@ def get_read_latency():
 def rados_cleanup(prefix):
     assert prefix
     cmd = ['rados', '-p', 'test', 'cleanup', 'benchmark_data', '--prefix', prefix]
-    logger.info("Running cmd: '%s'", " ".join(cmd))
+    backoff = random.randint(0, 60)
+    logger.info("Running cmd: '%s' after %s seconds", " ".join(cmd), backoff)
+    time.sleep(backoff)  # so we don't rune cleanup all at same time, trying to debug it failing across nodes
     p = subprocess.Popen(" ".join(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     stdout, stderr = p.communicate()
     stdout = stdout.replace("\n", " ")
