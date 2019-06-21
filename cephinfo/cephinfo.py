@@ -12,7 +12,7 @@ import json
 import string
 import sys
 import time
-improt logging
+import logging
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
 logger = logging.getLogger(__file__)
