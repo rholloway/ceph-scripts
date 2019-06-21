@@ -7,7 +7,15 @@
 # Author: Dan van der Ster (daniel.vanderster@cern.ch)
 #
 
-import commands, json, string, sys, time
+import commands, json, string, sys, time, logging
+
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+logger = logging.getLogger(__file__)
+logger.setLevel(logging.INFO)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 def init_df():
   global df_data

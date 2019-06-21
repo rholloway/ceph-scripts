@@ -7,9 +7,12 @@
 # Author: Dan van der Ster (daniel.vanderster@cern.ch)
 #
 
-try: import simplejson as json
-except ImportError: import json
+try:
+  import simplejson as json
+except ImportError:
+  import json
 
+import logging
 import argparse
 import commands
 import cephinfo
@@ -23,6 +26,13 @@ import math
 
 CARBON_SERVER = '10.0.37.12'
 CARBON_PORT = 2003
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+logger = logging.getLogger(__file__)
+logger.setLevel(logging.INFO)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 
 def get_status(pg_stats_sum, latency_ms):
@@ -50,7 +60,10 @@ def write_xml(slsid='Ceph'):
   pg_map = cephinfo.stat_data['pgmap']
   try:
     latency = cephinfo.get_write_latency()
+    current_app.logger.info("Latency: %s", latency)
     read_latency = cephinfo.get_read_latency()
+
+    current_app.logger.info("Cleaning up %s", latency[0])
     cephinfo.rados_cleanup(latency[0])
   except IndexError:
     latency = ['',[0,0,0]]
