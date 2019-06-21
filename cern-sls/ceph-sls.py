@@ -60,10 +60,10 @@ def write_xml(slsid='Ceph'):
   pg_map = cephinfo.stat_data['pgmap']
   try:
     latency = cephinfo.get_write_latency()
-    current_app.logger.info("Latency: %s", latency)
+    logger.info("Latency: %s", latency)
     read_latency = cephinfo.get_read_latency()
 
-    current_app.logger.info("Cleaning up %s", latency[0])
+    logger.info("Cleaning up %s", latency[0])
     cephinfo.rados_cleanup(latency[0])
   except IndexError:
     latency = ['',[0,0,0]]
