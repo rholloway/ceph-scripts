@@ -8,6 +8,7 @@
 #
 
 import commands
+import subprocess
 import json
 import string
 import sys
@@ -188,10 +189,13 @@ def get_read_latency():
 
 def rados_cleanup(prefix):
     assert prefix
-    cmd = 'rados -p test cleanup --prefix %s' % prefix
-    logger.info("Running cleanup command: '%s'", cmd)
-    output = commands.getoutput(cmd)
-    return output
+    cmd = ['rados', '-p', 'test', 'cleanup', 'benchmark_data', '--prefix', prefix]
+    logger.info("Running cmd: '%s'", " ".join(cmd))
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    rc = p.returncode
+    logger.info("Cleanup stdout: '%s' stderr: '%s' rc:%s", stdout, stderr, rc)
+    return stdout
 
 
 def get_n_openstack_volumes():

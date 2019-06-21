@@ -61,8 +61,9 @@ def write_xml(slsid='Ceph'):
     latency = None
     try:
         latency = cephinfo.get_write_latency()
-        logger.info("Latency: %s", latency)
+        logger.info("Write Latency: %s", latency)
         read_latency = cephinfo.get_read_latency()
+        logger.info("Read Latency: %s", read_latency)
 
         logger.info("Cleaning up %s", latency[0])
         # russ: clean up all benchmark data associated with this node, sometimes rados cleanup fails if specifying
