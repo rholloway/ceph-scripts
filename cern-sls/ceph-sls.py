@@ -216,7 +216,15 @@ def write_xml(slsid='Ceph'):
 {graphite_prefix}.write_mb_sec {write_mb_sec} {graphite_timestamp}
 {graphite_prefix}.op_per_sec {op_per_sec} {graphite_timestamp}
 """
+    # go ahead and send sls data - I feel like with large carbon output some are getting dropped somewhere
+    update = graphite.format(**context)
+    sock = socket.socket()
+    sock.connect((CARBON_SERVER, CARBON_PORT))
+    sock.sendall(update)
+    sock.close()
 
+    # now send osd data
+    graphite = ""
     for osd in osd_df:
         graphite = graphite + "{graphite_osd_prefix}.%s.crush_weight %s {graphite_timestamp}\n" % (
             osd['id'], osd['crush_weight'])
