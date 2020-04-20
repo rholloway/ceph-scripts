@@ -24,7 +24,7 @@ import socket
 from datetime import datetime
 import math
 
-CARBON_SERVER = '10.0.37.12'
+CARBON_SERVER = '10.181.48.46'
 CARBON_PORT = 2003
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
